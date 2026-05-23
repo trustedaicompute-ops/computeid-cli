@@ -1,0 +1,91 @@
+Metadata-Version: 2.4
+Name: computeid-cli
+Version: 1.0.0
+Summary: CLI tool for ComputeID — cryptographic identity for AI compute infrastructure
+Home-page: https://github.com/trustedaicompute-ops/computeid-sdk
+Author: ComputeID
+Author-email: hello@compute-id.com
+Keywords: gpu identity certificates quantum-safe ai agents security cli computeid
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Security :: Cryptography
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.0.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: rich>=13.0.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# ComputeID CLI
+
+Command line tool for ComputeID — cryptographic identity for AI compute infrastructure.
+
+## Install
+
+```bash
+pip install computeid-cli
+```
+
+## Quick Start
+
+```bash
+# Login
+computeid login
+
+# Check status
+computeid status
+
+# Register a GPU
+computeid device register --name "NVIDIA A100" --ip 192.168.1.10
+
+# List devices
+computeid device list
+
+# Approve a device
+computeid device approve GPU-001
+
+# Revoke a device
+computeid device revoke GPU-001
+
+# Issue an agent passport
+computeid agent issue --name "ResearchAgent" --trust standard
+
+# View audit logs
+computeid logs
+
+# Get help
+computeid --help
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `computeid status` | Check API health |
+| `computeid login` | Login with admin password |
+| `computeid logout` | Logout |
+| `computeid device list` | List all devices |
+| `computeid device register` | Register a new GPU or server |
+| `computeid device approve` | Approve a pending device |
+| `computeid device revoke` | Revoke a device certificate |
+| `computeid device authenticate` | Get JWT token for a device |
+| `computeid agent issue` | Issue an AgentPassport |
+| `computeid logs` | View audit logs |
+| `computeid config show` | Show configuration |
+| `computeid quickstart` | Interactive quick start guide |
+
+## Docs
+
+compute-id.com | hello@compute-id.com
