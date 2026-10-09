@@ -11,26 +11,22 @@ pip install computeid-cli
 ## Quick Start
 
 ```bash
-# Login
+# Save your API key (checked against the API; stored in ~/.computeid/config.json, mode 600)
 computeid login
+# ...or skip login and set it in the environment
+export COMPUTEID_API_KEY=your-api-key
 
 # Check status
 computeid status
 
-# Register a GPU
-computeid device register --name "NVIDIA A100" --ip 192.168.1.10
-
-# List devices
-computeid device list
-
-# Approve a device
-computeid device approve GPU-001
-
-# Revoke a device
-computeid device revoke GPU-001
-
 # Issue an agent passport
-computeid agent issue --name "ResearchAgent" --trust standard
+computeid agent issue --name "ResearchAgent" --org "Acme Corp" --capabilities read,web_browse
+
+# List, verify, check a capability, revoke
+computeid agent list
+computeid agent verify <passport_id>
+computeid agent check <passport_id> web_browse
+computeid agent revoke <passport_id> --reason "done"
 
 # View audit logs
 computeid logs
@@ -44,17 +40,21 @@ computeid --help
 | Command | Description |
 |---------|-------------|
 | `computeid status` | Check API health |
-| `computeid login` | Login with admin password |
-| `computeid logout` | Logout |
-| `computeid device list` | List all devices |
-| `computeid device register` | Register a new GPU or server |
-| `computeid device approve` | Approve a pending device |
-| `computeid device revoke` | Revoke a device certificate |
-| `computeid device authenticate` | Get JWT token for a device |
+| `computeid login` | Save your API key (sent as `X-API-Key`) |
+| `computeid logout` | Remove the saved API key |
+| `computeid agent list` | List your AgentPassports |
 | `computeid agent issue` | Issue an AgentPassport |
-| `computeid logs` | View audit logs |
+| `computeid agent verify` | Verify a passport (public, no key needed) |
+| `computeid agent check` | Check a passport's capability |
+| `computeid agent log` | Log an agent action |
+| `computeid agent audit` | View an agent's action log |
+| `computeid agent revoke` | Revoke a passport |
+| `computeid logs` | View your account's audit logs |
 | `computeid config show` | Show configuration |
+| `computeid config set-url` | Point the CLI at another API URL |
 | `computeid quickstart` | Interactive quick start guide |
+
+`COMPUTEID_API_KEY`, when set, takes precedence over the saved key.
 
 ## Docs
 

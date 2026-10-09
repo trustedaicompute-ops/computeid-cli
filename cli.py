@@ -37,26 +37,30 @@ def load_config():
     return {}
 
 def save_config(cfg):
+    # The config holds an API key: owner-only permissions.
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, 'w') as f:
+    fd = os.open(CONFIG_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w') as f:
         json.dump(cfg, f, indent=2)
+    os.chmod(CONFIG_FILE, 0o600)
 
-def get_token():
-    cfg = load_config()
-    return cfg.get("token")
+def get_api_key():
+    """COMPUTEID_API_KEY env var, else the key saved by `computeid login`."""
+    return os.getenv("COMPUTEID_API_KEY") or load_config().get("api_key")
 
 def get_api_url():
     cfg = load_config()
     return cfg.get("api_url", API_URL)
 
 def auth_headers():
-    token = get_token()
-    if not token:
-        error("Not logged in. Run: computeid login")
+    # The API authenticates with X-API-Key only (Authorization: Bearer is ignored).
+    api_key = get_api_key()
+    if not api_key:
+        error("Not logged in. Run: computeid login (or set COMPUTEID_API_KEY)")
         sys.exit(1)
     return {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "X-API-Key": api_key,
     }
 
 def success(msg):
@@ -112,7 +116,7 @@ def fmt_time(ts):
 # ── CLI ROOT ──────────────────────────────────────────────────────────────────
 
 @click.group()
-@click.version_option("1.0.1", prog_name="computeid")
+@click.version_option("1.1.0", prog_name="computeid")
 def cli():
     """
     ComputeID CLI — Cryptographic identity for AI agents.
@@ -143,7 +147,7 @@ def status():
                 t.add_row("API URL", api)
                 t.add_row("Status", data.get("status", "running"))
                 t.add_row("Time", fmt_time(data.get("time", "")))
-                t.add_row("Logged in", "Yes" if get_token() else "No — run: computeid login")
+                t.add_row("Logged in", "Yes" if get_api_key() else "No — run: computeid login")
                 console.print(t)
             else:
                 print(f"  API URL: {api}")
@@ -156,25 +160,28 @@ def status():
 # ── LOGIN ─────────────────────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--password", "-p", prompt=True, hide_input=True, help="Admin password")
-def login(password):
-    """Login to ComputeID with your admin password."""
+@click.option("--api-key", "-k", prompt="API key", hide_input=True, help="Your ComputeID API key")
+def login(api_key):
+    """Save your ComputeID API key (checked against the API first)."""
     api = get_api_url()
+    api_key = api_key.strip()
     try:
-        r = requests.post(f"{api}/api/admin/login",
-            json={"password": password},
-            headers={"Content-Type": "application/json"},
-            timeout=10)
-        data = r.json()
+        r = requests.get(f"{api}/v1/agents",
+            headers={"X-API-Key": api_key}, timeout=10)
         if r.ok:
             cfg = load_config()
-            cfg["token"] = data["token"]
+            cfg.pop("token", None)  # pre-1.1 admin JWT, never accepted by the API
+            cfg["api_key"] = api_key
             cfg["api_url"] = api
             save_config(cfg)
             success("Logged in successfully!")
-            info("Token saved to ~/.computeid/config.json")
+            info("API key saved to ~/.computeid/config.json (owner-only permissions)")
         else:
-            error(f"Login failed: {data.get('error', 'Invalid password')}")
+            try:
+                msg = r.json().get("error")
+            except ValueError:
+                msg = None
+            error(f"Login failed: {msg or f'HTTP {r.status_code}'}")
     except Exception as e:
         error(f"Login error: {e}")
 
@@ -183,6 +190,7 @@ def logout():
     """Logout and clear saved credentials."""
     cfg = load_config()
     cfg.pop("token", None)
+    cfg.pop("api_key", None)
     save_config(cfg)
     success("Logged out successfully")
 
@@ -252,7 +260,7 @@ def agent_issue(name, org, capabilities):
     try:
         r = requests.post(f"{get_api_url()}/v1/agents/register",
             json={"name": name, "organization": org, "capabilities": caps},
-            headers={"Content-Type": "application/json"},
+            headers=auth_headers(),
             timeout=10)
         data = r.json()
         if r.ok:
@@ -324,7 +332,7 @@ def agent_check(passport_id, capability):
     try:
         r = requests.get(
             f"{get_api_url()}/v1/agents/{passport_id}/capabilities/{capability}",
-            timeout=10)
+            headers=auth_headers(), timeout=10)
         data = r.json()
         if data.get("granted"):
             success(f"Capability '{capability}' is GRANTED")
@@ -346,7 +354,7 @@ def agent_log(passport_id, action, outcome):
     try:
         r = requests.post(f"{get_api_url()}/v1/agents/{passport_id}/actions",
             json={"action": action, "outcome": outcome},
-            headers={"Content-Type": "application/json"},
+            headers=auth_headers(),
             timeout=10)
         data = r.json()
         if r.ok:
@@ -364,7 +372,7 @@ def agent_audit(passport_id, limit):
     try:
         r = requests.get(
             f"{get_api_url()}/v1/agents/{passport_id}/actions?limit={limit}",
-            timeout=10)
+            headers=auth_headers(), timeout=10)
         entries = r.json()
         if not entries:
             warn("No audit entries found for this agent")
@@ -397,7 +405,7 @@ def agent_revoke(passport_id, reason, force):
     try:
         r = requests.delete(f"{get_api_url()}/v1/agents/{passport_id}/revoke",
             json={"reason": reason},
-            headers={"Content-Type": "application/json"},
+            headers=auth_headers(),
             timeout=10)
         data = r.json()
         if r.ok:
@@ -462,12 +470,12 @@ def config_show():
         t.add_column("Key", style="bold cyan", width=20)
         t.add_column("Value", style="white")
         t.add_row("API URL", cfg.get("api_url", API_URL))
-        t.add_row("Logged In", "Yes ✓" if cfg.get("token") else "No")
+        t.add_row("Logged In", "Yes ✓" if get_api_key() else "No")
         t.add_row("Config File", str(CONFIG_FILE))
         console.print(t)
     else:
         print(f"API URL: {cfg.get('api_url', API_URL)}")
-        print(f"Logged in: {'Yes' if cfg.get('token') else 'No'}")
+        print(f"Logged in: {'Yes' if get_api_key() else 'No'}")
 
 @config.command("set-url")
 @click.argument("url")
