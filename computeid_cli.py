@@ -4,6 +4,8 @@ ComputeID CLI — Command line tool for ComputeID identity management
 Every AI agent needs an identity.
 """
 
+__version__ = "2.0.0"
+
 import click
 import requests
 import json
@@ -116,7 +118,7 @@ def fmt_time(ts):
 # ── CLI ROOT ──────────────────────────────────────────────────────────────────
 
 @click.group()
-@click.version_option("1.1.0", prog_name="computeid")
+@click.version_option(__version__, prog_name="computeid")
 def cli():
     """
     ComputeID CLI — Cryptographic identity for AI agents.
