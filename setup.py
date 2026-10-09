@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="computeid-cli",
-    version="1.0.2",
+    version="1.1.0",
     description="CLI tool for ComputeID — cryptographic identity for AI compute infrastructure",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
